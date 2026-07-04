@@ -18,10 +18,7 @@
 name: Java CI
 
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+  workflow_dispatch:
 
 # allow single build per branch or PR
 concurrency:
@@ -41,7 +38,7 @@ env:
 
 jobs:
   initial-build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Set up JDK
         uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
@@ -82,7 +79,8 @@ jobs:
 
       - name: Set up Maven
         shell: bash
-        run: mvn --errors --batch-mode --show-version org.apache.maven.plugins:maven-wrapper-plugin:3.3.4:wrapper "-Dmaven=4.0.0-rc-5"
+        run: mvn --errors --batch-mode --show-version org.apache.maven.plugins:maven-wrapper-plugin:3.3.4:wrapper 
+          "-Dmaven=4.0.0-rc-5"
 
       - name: Prepare Mimir for Maven 4.x
         shell: bash
@@ -101,7 +99,7 @@ jobs:
 
       - name: Upload Mimir caches
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: ${{ !cancelled() && !failure() }}
+        if: always()
         with:
           name: cache-${{ runner.os }}-initial
           retention-days: 1
@@ -117,7 +115,7 @@ jobs:
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: ${{ failure() || cancelled() }}
+        if: always()
         with:
           name: initial-logs
           retention-days: 1
@@ -135,6 +133,12 @@ jobs:
           path: |
             ~/.mimir/*.log
 
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+      fail-fast: false
   full-build:
     needs: initial-build
     runs-on: ${{ matrix.os }}
